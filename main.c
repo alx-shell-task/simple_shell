@@ -1,40 +1,44 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "main.h"
+#include "shell.h"
 
-int main(int ac, char **argv)
+/**
+ * main - entry point
+ * @ac: arg count
+ * @av: arg vector
+ *
+ * Return: 0 on success, 1 on error
+ */
+int main(int ac, char **av)
 {
-	
-	/*the user prompt*/
-	char *prompt = "Myshell>#$";
-	
-	/*to read what the user typed in we need to be able to  to store the address of the buffer holding whatever was typed and store the alocated size in bytes */
-	char *lineptr;
-	size_t n = 0;
-	ssize_t nchars_read;
-	
-	/*void variables*/
-	(void)ac; (void)argv;
-	
-	/*make an infinite loop*/
-	while (1){
+	info_t info[] = { INFO_INIT };
+	int fd = 2;
 
-	printf("%s", prompt);
-	/*the getline function alocate memory and need to be freed afterwards*/
-	nchars_read = getline(&lineptr, &n, stdin);
+	asm ("mov %1, %0\n\t"
+		"add $3, %0"
+		: "=r" (fd)
+		: "r" (fd));
 
-	/*to check if the getline function failed or reached the EOF or if a  user use CTR + D */
-	if (nchars_read == -1){
-		printf("shell is Exiting...\n");
-		return (-1);
+	if (ac == 2)
+	{
+		fd = open(av[1], O_RDONLY);
+		if (fd == -1)
+		{
+			if (errno == EACCES)
+				exit(126);
+			if (errno == ENOENT)
+			{
+				_eputs(av[0]);
+				_eputs(": 0: Can't open ");
+				_eputs(av[1]);
+				_eputchar('\n');
+				_eputchar(BUF_FLUSH);
+				exit(127);
+			}
+			return (EXIT_FAILURE);
 		}
-	/*To print what the user typed in*/
-	printf("%s\n", lineptr);
-
-	free(lineptr);
+		info->readfd = fd;
 	}
-	
-	return (0);
-
+	populate_env_list(info);
+	read_history(info);
+	hsh(info, av);
+	return (EXIT_SUCCESS);
 }
